@@ -1,0 +1,48 @@
+# ===================================================================
+# 从 Spring Initializr 和 GitHub 社区模板合并的推荐配置
+# ===================================================================
+
+# 编译输出
+/target/
+/build/
+
+# Maven Wrapper
+# 推荐的做法是提交 .jar 文件，所以这里把它从忽略规则中排除
+# 如果你确定要忽略它，可以删除下面这一行
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE 配置文件
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# 日志文件和临时文件
+*.log
+*.tmp
+
+# 操作系统生成的文件
+# Windows
+Thumbs.db
+# macOS
+.DS_Store

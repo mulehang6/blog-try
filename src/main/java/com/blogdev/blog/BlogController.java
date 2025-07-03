@@ -1,5 +1,6 @@
 package com.blogdev.blog;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,7 +38,7 @@ public class BlogController {
 
     //创建文章
     @PostMapping("/post")
-    public PostDto createPost(@RequestBody PostDto pd) {
+    public PostDto createPost(@RequestBody @Valid PostDto pd) {
         //将Dto转换成实体
         Post postEntity = PostDtoToPost(pd);
 
@@ -65,7 +66,7 @@ public class BlogController {
 
     //更新文章
     @PutMapping("/post/{id}")
-    public ResponseEntity<PostDto> updatePost(@PathVariable Long id, @RequestBody PostDto updatedDetails) {
+    public ResponseEntity<PostDto> updatePost(@PathVariable Long id, @RequestBody @Valid PostDto updatedDetails) {
         return pr.findById(id).map(existingPost -> {
             existingPost.setTitle(updatedDetails.getTitle());
             existingPost.setContext(updatedDetails.getContext());

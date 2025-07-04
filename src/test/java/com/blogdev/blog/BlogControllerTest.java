@@ -5,18 +5,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 // @WebMvcTest 注解用于测试Controller层，它只会加载与Web层相关的Bean
 @WebMvcTest(BlogController.class)
@@ -59,7 +63,7 @@ public class BlogControllerTest {
 
     //标题为空
     @Test
-    void example2() throws Exception{
+    void createPostWithNullTitle() throws Exception{
         PostDto postDto = new PostDto();
         postDto.setTitle("");
         postDto.setContext("这是内容");
@@ -71,9 +75,86 @@ public class BlogControllerTest {
                 .andExpect(jsonPath("$.title").value("文章标题不能为空"));
     }
 
+    //内容为空
+    @Test
+    void createPostWithNullContext() throws Exception{
+        PostDto postDto = new PostDto();
+        postDto.setTitle("这是标题");
+        postDto.setContext("");
+
+        mockMvc.perform(post("/api/post")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(postDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.context").value("文章内容不能为空"));
+    }
+
+    //标题过长
+    @Test
+    void createPostWithTitleTooLong() throws Exception {
+        PostDto postDto = new PostDto();
+        postDto.setTitle("近日，CD PROJECT RED官方商城Gear Store正式宣布，" +
+                "与玩具品牌Zing合作推出《赛博朋克2077》标志性武器“热能武士刀”的等比例精致复制品，" +
+                "并已开放预售，售价为120美元。这款武器复制品预计将于2025年9月开始发货。\n" +
+                "“热能武士刀”是《赛博朋克2077》中极具代表性的近战武器，" +
+                "以其炽热的刀锋和极高的杀伤力闻名于夜之城，" +
+                "如今，这把武器首次在现实世界中实体化，由 Zing 与 " +
+                "CDPR 联手打造，完美还原游戏中的未来科技感。");
+        postDto.setContext("这是内容");
+
+        mockMvc.perform(post("/api/post")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(postDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("文章标题的长度不能超过150个字符"));
+    }
+
+    //查找全部，但是没有文章
+    @Test
+    void findAllButNonePostExists() throws Exception {
+        given(postRepository.findAll()).willReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/api/post")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    //查找全部，有文章（1或多篇）
+    @Test
+    void findAllAndPostExists() throws Exception {
+        Post post1 = new Post();
+        post1.setPostID(1L);
+        post1.setTitle("标题1");
+        post1.setContext("内容1");
+
+        Post post2 = new Post();
+        post2.setPostID(2L);
+        post2.setTitle("标题2");
+        post2.setContext("内容2");
+
+
+        List<Post> posts = List.of(post1,post2);
+
+        given(postRepository.findAll()).willReturn(posts);
+
+        mockMvc.perform(get("/api/post"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())//验证返回的是JSON数组
+                .andExpect(jsonPath("$",hasSize(2)))//验证大小是两个
+                .andExpect(jsonPath("$[0].id",is(1)))
+                .andExpect(jsonPath("$[0].title").value("标题1"))
+                .andExpect(jsonPath("$[0].context").value("内容1"))
+                .andExpect(jsonPath("$[1].id",is(2)))
+                .andExpect(jsonPath("$[1].title").value("标题2"))
+                .andExpect(jsonPath("$[1].context").value("内容2"));
+
+    }
+
     //按id查找，且id存在
     @Test
-    void example3 () throws Exception{
+    void findByExistedId() throws Exception{
         Post post = new Post();
         post.setPostID(1L);
         post.setTitle("标题");
@@ -90,11 +171,40 @@ public class BlogControllerTest {
 
     //按id查找，id不存在
     @Test
-    void example4 () throws Exception {
+    void findByNoneExistedId() throws Exception {
         given(postRepository.findById(99L)).willReturn(Optional.empty());
 
         mockMvc.perform(get("/api/post/99"))
                 .andExpect(status().isNotFound());
+    }
+
+    //正常更新
+    @Test
+    void updateSuccessfully() throws Exception{
+        long id = 1L;
+        PostDto updatedPost = new PostDto();
+        updatedPost.setTitle("【更新】标题");
+        updatedPost.setContext("【更新】内容");
+
+        Post originalPost = new Post();
+        originalPost.setPostID(id);
+        originalPost.setTitle("标题");
+        originalPost.setContext("内容");
+
+        Post savedPost = new Post();
+        savedPost.setPostID(id);
+        savedPost.setTitle("【更新】标题");
+        savedPost.setContext("【更新】内容");
+
+        given(postRepository.findById(id)).willReturn(Optional.of(originalPost));
+        given(postRepository.save(any(Post.class))).willReturn(savedPost);
+
+        mockMvc.perform(put("/api/post/{id}",id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updatedPost)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("【更新】标题"))
+                .andExpect(jsonPath("$.context").value("【更新】内容"));
     }
 
 

@@ -16,11 +16,11 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 // @WebMvcTest 注解用于测试Controller层，它只会加载与Web层相关的Bean
 @WebMvcTest(BlogController.class)
@@ -207,5 +207,67 @@ public class BlogControllerTest {
                 .andExpect(jsonPath("$.context").value("【更新】内容"));
     }
 
+    //更新，id不存在
+    @Test
+    void updatePostButNoId() throws Exception {
+        //准备一个不存在的id
+        long id = 99L;
+        PostDto postDto = new PostDto();
+        postDto.setTitle("标题");
+        postDto.setContext("内容");
+
+        given(postRepository.findById(id)).willReturn(Optional.empty());
+
+        mockMvc.perform(put("/api/post/{id}",id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(postDto)))
+                .andExpect(status().isNotFound());
+    }
+
+    //更新，标题太长
+    @Test
+    void updatePostButTitleTooLong() throws Exception{
+        long id = 1L;
+        PostDto postDto = new PostDto();
+        //不合法的标题
+        postDto.setTitle("a".repeat(151));
+        postDto.setContext("内容");
+
+        mockMvc.perform(put("/api/post/{id}",id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(postDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("文章标题的长度不能超过150个字符"));
+    }
+
+    //正常删除
+    @Test
+    void deleteSuccessfully() throws Exception {
+        long id = 1L;
+
+        //需要先假设这个id存在
+        given(postRepository.existsById(id)).willReturn(true);
+
+        mockMvc.perform(delete("/api/post/{id}",id))
+                .andExpect(status().isNoContent());
+
+        //验证deleteById确实被调用了
+        verify(postRepository).deleteById(id);
+    }
+
+    //删除，id不存在
+    @Test
+    void deleteButNoMatchId() throws Exception{
+        long id = 99L;
+
+        //模拟id不存在
+        given(postRepository.existsById(id)).willReturn(false);
+
+        mockMvc.perform(delete("/api/post/{id}",id))
+                .andExpect(status().isNotFound());
+
+        //验证deleteById从未被调用
+        verify(postRepository,never()).deleteById(id);
+    }
 
 }

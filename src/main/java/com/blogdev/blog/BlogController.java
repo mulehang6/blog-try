@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/posts")
 public class BlogController {
     //注入postRepository
     private final PostRepository pr;
@@ -38,7 +38,7 @@ public class BlogController {
     }
 
     //创建文章
-    @PostMapping("/post")
+    @PostMapping
     public PostDto createPost(@RequestBody @Valid PostDto pd) {
         //将Dto转换成实体
         Post postEntity = PostDtoToPost(pd);
@@ -51,7 +51,7 @@ public class BlogController {
     }
 
     //获取所有文章
-    @GetMapping("/post")
+    @GetMapping
     public List<PostDto> getAllPosts() {
         List<Post> allPosts = pr.findAll();
 
@@ -59,14 +59,14 @@ public class BlogController {
     }
 
     //获取单篇post
-    @GetMapping("/post/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<PostDto> getPostById(@PathVariable long id) {
         return pr.findById(id).map(this::PostToPostDto).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     //更新文章
-    @PutMapping("/post/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<PostDto> updatePost(@PathVariable Long id, @RequestBody @Valid PostDto updatedDetails) {
         return pr.findById(id).map(existingPost -> {
             existingPost.setTitle(updatedDetails.getTitle());
@@ -79,7 +79,7 @@ public class BlogController {
     }
 
     //删除文章
-    @DeleteMapping("/post/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable long id) {
         if(pr.existsById(id)) {
             pr.deleteById(id);
